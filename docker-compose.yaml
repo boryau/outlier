@@ -1,0 +1,60 @@
+version: '3'
+services:
+  mysql:
+     container_name: mysql
+     image: mysql:5
+     environment:
+       MYSQL_DATABASE: outlier
+       MYSQL_ROOT_PASSWORD: secret
+     ports:
+       - 3306:3306
+     expose:
+       - 3306
+     restart: always
+  zookeeper:
+      image: wurstmeister/zookeeper
+      container_name: zookeeper
+      restart: always
+      ports:
+        - "2181:2181"
+  kafka:
+      image: wurstmeister/kafka
+      container_name: kafka
+      links:
+        - zookeeper:zookeeper
+      ports:
+        - "9092:9092"
+      expose:
+        - 9092
+        - 9192
+      environment:
+        KAFKA_ADVERTISED_HOST_NAME: kafka
+        KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+        KAFKA_MESSAGE_MAX_BYTES: 2000000
+        KAFKA_CREATE_TOPICS: "data:1:1"
+      depends_on:
+        - zookeeper
+  detection:
+    image: outlier
+    build:
+          context: ./
+          dockerfile: Dockerfile
+    links:
+      - mysql
+      - kafka
+    depends_on:
+      - mysql
+      - kafka
+    restart: on-failure
+    ports:
+      - 8086:8086
+    environment:
+      - spring.datasource.url=jdbc:mysql://mysql:3306/outlier?useSSL=false
+      - kafka.url=kafka:9092
+      - DATABASE_USER=root
+      - DATABASE_PASSWORD=secret
+      - DATABASE_NAME=outlier
+      - DATABASE_PORT=3306
+      - SPRING_PROFILES_ACTIVE=container
+
+
