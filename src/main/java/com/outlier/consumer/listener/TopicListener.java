@@ -30,7 +30,7 @@ public class TopicListener {
     @KafkaListener(topics = "${kafka.topic}", groupId = "sensors")
     public void listen(SensorData sensorData){
         logger.info("TopicListener listen start for group sensonrs");
-
+        boolean parseFail = false;
         Double median = MedianUtil.findMedian(sensorData);
         logger.info("TopicListener median is "+ median);
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:dd:ss.SSS");
@@ -38,11 +38,15 @@ public class TopicListener {
         try {
             publishDate = sdf.parse(sensorData.getTime());
         } catch (ParseException e) {
+            logger.error("TopicListener Date is not in correcrt format");
+            parseFail = true;
             e.printStackTrace();
         }
         logger.info("TopicListener date is "+ publishDate);
         Calendar cal = Calendar.getInstance(TimeZone.getTimeZone("GMT"));
-        cal.setTime(publishDate);
+        if(!parseFail) {
+            cal.setTime(publishDate);
+        }
         Long timestamp = cal.getTimeInMillis();
         logger.info("TopicListener timestamp is "+ timestamp);
         MedianPublisher medianPublisher = new MedianPublisher(sensorData.getPublisher(), timestamp, median);
